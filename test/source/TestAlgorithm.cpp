@@ -11,6 +11,7 @@
 
 #include <EASTL/algorithm.h>
 #include <EASTL/functional.h>
+#include <EASTL/unique_ptr.h>
 #include <EASTL/vector.h>
 #include <EASTL/array.h>
 #include <EASTL/deque.h>
@@ -19,9 +20,9 @@
 #include <EASTL/string.h>
 #include <EASTL/set.h>
 #include <EASTL/sort.h>
+#include "ConceptImpls.h"
 #include <EAStdC/EAMemory.h>
 #include "EASTLTest.h"  // Put this after the above so that it doesn't block any warnings from the includes above.
-
 
 namespace eastl
 {
@@ -115,7 +116,6 @@ struct TestObjectNegate : public eastl::unary_function<TestObject, TestObject>
 	TestObject operator()(const TestObject& a) const
 		{ return TestObject(-a.mX); }
 };
-
 
 static int TestMinMax()
 {
@@ -667,8 +667,6 @@ int TestAlgorithm()
 {
 	using namespace eastl;
 
-	EASTLTest_Printf("TestAlgorithm\n");
-
 	int nErrorCount = 0;
 
 	EA::UnitTest::Rand rng(EA::UnitTest::GetRandSeed());
@@ -890,11 +888,7 @@ int TestAlgorithm()
   
 			eastl::move(src.begin(), src.end(), dest.begin());
 			EATEST_VERIFY((dest[0] == "0") && (dest[3] == "3"));
-			#if EASTL_MOVE_SEMANTICS_ENABLED
-				EATEST_VERIFY(src[0].empty() && src[3].empty());
-			#else
-				// Else move_backward wasn't able to use C++11 move and instead did a copy.
-			#endif
+			EATEST_VERIFY(src[0].empty() && src[3].empty());
 		}
 
 		{
@@ -906,11 +900,7 @@ int TestAlgorithm()
   
 			eastl::move_backward(src.begin(), src.end(), dest.end());
 			EATEST_VERIFY((dest[0] == "0") && (dest[3] == "3"));
-			#if EASTL_MOVE_SEMANTICS_ENABLED
-				EATEST_VERIFY(src[0].empty() && src[3].empty());
-			#else
-				// Else move_backward wasn't able to use C++11 move and instead did a copy.
-			#endif
+			EATEST_VERIFY(src[0].empty() && src[3].empty());
 		}
 	}
 
@@ -1295,6 +1285,25 @@ int TestAlgorithm()
 		EATEST_VERIFY(i == 1000);
 	}
 
+	// for_each_n
+	{
+		{
+			vector<int> v = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+			for_each_n(v.begin(), 5, [](auto& e) { e += 10; });
+
+			vector<int> expected = {10, 11, 12, 13, 14, 5, 6, 7, 8, 9};
+			EATEST_VERIFY(v == expected);
+		}
+
+		// verify lambda can return a result that is ignored.
+		{
+			vector<int> v = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+			for_each_n(v.begin(), 5, [](auto& e) { e += 10; return 42; });
+
+			vector<int> expected = {10, 11, 12, 13, 14, 5, 6, 7, 8, 9};
+			EATEST_VERIFY(v == expected);
+		}
+	}
 
 	{
 		// void generate(ForwardIterator first, ForwardIterator last, Generator generator)
@@ -2339,22 +2348,62 @@ int TestAlgorithm()
 		}
 	}
 
+	// test eastl::sort with move-only type
+	{
+		{
+			eastl::vector<eastl::unique_ptr<int>> vec;
+			eastl::sort(vec.begin(), vec.end(), [](const eastl::unique_ptr<int>& lhs, const eastl::unique_ptr<int>& rhs) { return *lhs < *rhs; });
+		}
+		{
+			eastl::vector<eastl::unique_ptr<int>> vec;
+			eastl::sort(vec.begin(), vec.end());
+		}
+		{
+			eastl::vector<MissingMoveConstructor> vec;
+			eastl::sort(vec.begin(), vec.end(), [](const MissingMoveConstructor& lhs, const MissingMoveConstructor& rhs) { return lhs < rhs; });
+		}
+		{
+			eastl::vector<MissingMoveConstructor> vec;
+			eastl::sort(vec.begin(), vec.end());
+		}
+		{
+			eastl::vector<MissingMoveAssignable> vec;
+			eastl::sort(vec.begin(), vec.end(), [](const MissingMoveAssignable& lhs, const MissingMoveAssignable& rhs) { return lhs < rhs; });
+		}
+		{
+			eastl::vector<MissingMoveAssignable> vec;
+			eastl::sort(vec.begin(), vec.end());
+		}
+		{
+			eastl::vector<eastl::unique_ptr<int>> vec;
+			vec.emplace_back(new int(7));
+			vec.emplace_back(new int(-42));
+			vec.emplace_back(new int(5));
+			eastl::sort(vec.begin(), vec.end(),  [](const eastl::unique_ptr<int>& lhs, const eastl::unique_ptr<int>& rhs) { return *lhs < *rhs; });
+			EATEST_VERIFY(*vec[0] == -42);
+			EATEST_VERIFY(*vec[1] == 5);
+			EATEST_VERIFY(*vec[2] == 7);
+		}
+		{
+			for (unsigned tests = 0; tests < 50; ++tests)
+			{
+				eastl::vector<eastl::unique_ptr<int>> vec1;
+
+				for (int i = 0; i < 100; ++i)
+				{
+					int randomNumber = rng();
+					vec1.emplace_back(new int(randomNumber));
+				}
+
+				auto vec1Cmp = [](const eastl::unique_ptr<int>& lhs, const eastl::unique_ptr<int>& rhs) { return *lhs < *rhs; };
+				eastl::sort(vec1.begin(), vec1.end(), vec1Cmp);
+				EATEST_VERIFY(eastl::is_sorted(vec1.begin(), vec1.end(), vec1Cmp));
+			}
+		}
+	}
 
 	EATEST_VERIFY(TestObject::IsClear());
 	TestObject::Reset();
 
 	return nErrorCount;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

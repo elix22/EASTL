@@ -5,8 +5,13 @@
 
 #include "EASTLTest.h"
 #include <EASTL/fixed_vector.h>
+#include <EASTL/unique_ptr.h>
 #include <EAStdC/EAMemory.h>
 #include <new>
+
+#if defined(EA_COMPILER_CPP17_ENABLED) 
+#include <variant> //Variant not present in older standards
+#endif
 
 
 using namespace eastl;
@@ -48,8 +53,6 @@ namespace
 
 int TestFixedVector()
 {
-	EASTLTest_Printf("TestFixedVector\n");
-
 	int nErrorCount = 0;
 
 	TestObject::Reset();
@@ -498,6 +501,48 @@ int TestFixedVector()
 
 	}   // "Crash here."
 
+	{
+		const int FV_SIZE = 100;
+		fixed_vector<unique_ptr<unsigned int>, FV_SIZE> fvmv1; // to move via move assignment operator
+		fixed_vector<unique_ptr<unsigned int>, FV_SIZE> fvmv2; // to move via move copy constructor
+
+		for (unsigned int i = 0; i < FV_SIZE; ++i) // populate fvmv1
+			fvmv1.push_back(make_unique<unsigned int>(i));
+
+		fvmv2 = eastl::move(fvmv1); // Test move assignment operator
+
+		for (unsigned int i = 0; i < FV_SIZE; ++i)
+		{
+			EATEST_VERIFY(!fvmv1[i]);
+			EATEST_VERIFY(*fvmv2[i] == i);
+		}
+		EATEST_VERIFY(fvmv2.validate());
+		
+		swap(fvmv1, fvmv2); // Test swap with move-only objects
+		for (unsigned int i = 0; i < FV_SIZE; ++i)
+		{
+			EATEST_VERIFY(*fvmv1[i] == i);
+			EATEST_VERIFY(!fvmv2[i]);
+		}
+		EATEST_VERIFY(fvmv1.validate());
+		EATEST_VERIFY(fvmv2.validate());
+
+		fixed_vector<unique_ptr<unsigned int>, FV_SIZE> fv = eastl::move(fvmv1); // Test move copy constructor
+		for (unsigned int i = 0; i < FV_SIZE; ++i)
+		{
+			EATEST_VERIFY(!fvmv1[i]);
+			EATEST_VERIFY(*fv[i] == i);
+		}
+		EATEST_VERIFY(fv.validate());
+	}
+
+	#if defined(EA_COMPILER_CPP17_ENABLED) 
+	//Test pairing of std::variant with fixed_vector
+	{
+		eastl::fixed_vector<std::variant<int>, 4> v;
+		eastl::fixed_vector<std::variant<int>, 4> b = eastl::move(v);
+	}
+	#endif
 	return nErrorCount;     
 }
 
