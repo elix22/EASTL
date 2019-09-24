@@ -393,14 +393,24 @@ namespace eastl
 		template <class... Args>
 		void emplace(Args&&... args)
 		{
-			construct_value(eastl::move(T(eastl::forward<Args>(args)...)));
+			if (engaged)
+			{
+				destruct_value();
+				engaged = false;
+			}
+			construct_value(eastl::forward<Args>(args)...);
 			engaged = true;
 		}
 
 		template <class U, class... Args>
 		void emplace(std::initializer_list<U> ilist, Args&&... args)
 		{
-			construct_value(eastl::move(T(ilist, eastl::forward<Args>(args)...)));
+			if (engaged)
+			{
+				destruct_value();
+				engaged = false;
+			}
+			construct_value(ilist, eastl::forward<Args>(args)...);
 			engaged = true;
 		}
 
@@ -440,11 +450,9 @@ namespace eastl
 
 	private:
 
-	    inline void construct_value(const value_type& v)
-			{ ::new (eastl::addressof(val)) value_type(v); }
-
-	    inline void construct_value(value_type&& v)
-			{ ::new (eastl::addressof(val)) value_type(eastl::move(v)); }
+		template <class... Args>
+		inline void construct_value(Args&&... args)
+		{ ::new (eastl::addressof(val)) value_type(eastl::forward<Args>(args)...); }
 
 	    inline T* get_value_address() EASTL_OPTIONAL_NOEXCEPT
 	    {
@@ -595,7 +603,7 @@ namespace eastl
 		{ return bool(opt); }
 
     template <class T>
-    inline EA_CONSTEXPR bool operator<(const optional<T>& opt, eastl::nullopt_t) EA_NOEXCEPT
+    inline EA_CONSTEXPR bool operator<(const optional<T>&, eastl::nullopt_t) EA_NOEXCEPT
 		{ return false; }
 
     template <class T>
@@ -607,7 +615,7 @@ namespace eastl
 		{ return !opt; }
 
     template <class T>
-    inline EA_CONSTEXPR bool operator<=(eastl::nullopt_t, const optional<T>& opt) EA_NOEXCEPT
+    inline EA_CONSTEXPR bool operator<=(eastl::nullopt_t, const optional<T>&) EA_NOEXCEPT
 		{ return true; }
 
     template <class T>
@@ -615,11 +623,11 @@ namespace eastl
 		{ return bool(opt); }
 
     template <class T>
-    inline EA_CONSTEXPR bool operator>(eastl::nullopt_t, const optional<T>& opt) EA_NOEXCEPT
+    inline EA_CONSTEXPR bool operator>(eastl::nullopt_t, const optional<T>&) EA_NOEXCEPT
 		{ return false; }
 
     template <class T>
-    inline EA_CONSTEXPR bool operator>=(const optional<T>& opt, eastl::nullopt_t) EA_NOEXCEPT
+    inline EA_CONSTEXPR bool operator>=(const optional<T>&, eastl::nullopt_t) EA_NOEXCEPT
 		{ return true; }
 
     template <class T>

@@ -144,9 +144,9 @@ public:
 
 struct TestMoveAssignToSelf
 {
-	TestMoveAssignToSelf() EA_NOEXCEPT : mMovedToSelf(false) {}
+	TestMoveAssignToSelf() EA_NOEXCEPT : mMovedToSelf(false)      {}
 	TestMoveAssignToSelf(const TestMoveAssignToSelf& other)       { mMovedToSelf = other.mMovedToSelf; }
-	TestMoveAssignToSelf& operator=(TestMoveAssignToSelf&& other) { mMovedToSelf = true; return *this; }
+	TestMoveAssignToSelf& operator=(TestMoveAssignToSelf&&)       { mMovedToSelf = true; return *this; }
 	TestMoveAssignToSelf& operator=(const TestMoveAssignToSelf&) = delete;
 
 	bool mMovedToSelf;
@@ -1445,9 +1445,9 @@ int TestVector()
 		// Regression for failure in DoRealloc's use of uninitialize_move.
 		using namespace eastl;
 
-		const eastl::string8 str0 = "TestString0";
-		vector<eastl::string8> v(1, str0);
-		vector<eastl::string8> v_copy;
+		const eastl::string str0 = "TestString0";
+		vector<eastl::string> v(1, str0);
+		vector<eastl::string> v_copy;
 
 		// Test operator=
 		v_copy = v;
@@ -1643,10 +1643,10 @@ int TestVector()
 				typedef int* pointer;
 				typedef int& reference;
 
-				bool operator!=(const iterator& rhs) const { return false; }
-				iterator& operator++()                     { return *this; }
-				iterator operator++(int)                   { return *this; }
-				container_value_type operator*()           { return {}; }
+				bool operator!=(const iterator&) const { return false; }
+				iterator& operator++()                 { return *this; }
+				iterator operator++(int)               { return *this; }
+				container_value_type operator*()       { return {};    }
 			};
 
 			container_with_custom_iterator() EA_NOEXCEPT {}

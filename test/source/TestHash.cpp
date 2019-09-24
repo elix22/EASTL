@@ -950,7 +950,7 @@ int TestHash()
 			else
 				EATEST_VERIFY(it == hashSet.end());
 
-			it = hashSet.find_as(pString, hash<char*>(), equal_to_2<string, const char*>());
+			it = hashSet.find_as(pString, hash<const char*>(), equal_to_2<string, const char*>());
 			if(i < kCount)
 				EATEST_VERIFY(it != hashSet.end());
 			else
@@ -1329,18 +1329,18 @@ int TestHash()
 		struct Key
 		{
 			Key() {}
-			Key(Key&& o) {}
-			Key(const Key&& o) {}
-			bool operator==(const Key& other) const { return true; }
+			Key(Key&&) {}
+			Key(const Key&&) {}
+			bool operator==(const Key&) const { return true; }
 
 		private:
-			Key(const Key& o) {}
+			Key(const Key&) {}
 		};
 		EA_RESTORE_VC_WARNING()
 
 		struct Hash
 		{
-			std::size_t operator()(const Key& k) const { return 0; }
+			std::size_t operator()(const Key&) const { return 0; }
 		};
 
 		Key key1, key2;
